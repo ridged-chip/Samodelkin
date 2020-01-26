@@ -2,7 +2,14 @@ package android.bignerdranch.com
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.provider.Contacts
+import android.util.Log
 import kotlinx.android.synthetic.main.activity_new_character.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.android.Main
+import kotlinx.coroutines.android.UI
+import kotlinx.coroutines.launch
 
 private const val CHARACTER_DATA_KEY = "CHARACTER_DATA_KEY"
 
@@ -22,12 +29,15 @@ class NewCharacterActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_new_character)
 
-        characterData = savedInstanceState?.characterData ?:
-                CharacterGenerator.generate()
+
+        savedInstanceState?.let {
+            characterData = it.characterData
+        } ?: fetchCharacterFromWWW()
 
         generateButton.setOnClickListener {
-            characterData = CharacterGenerator.generate()
-            displayCharacterData()
+            launch (UI) {
+                fetchCharacterFromWWW()
+            }
         }
 
         displayCharacterData()
@@ -40,6 +50,17 @@ class NewCharacterActivity : AppCompatActivity() {
             dexterityTextView.text = dex
             wisdomTextView.text = wis
             strengthTextView.text = str
+        }
+    }
+
+    private fun fetchCharacterFromWWW() {
+        GlobalScope.launch (Dispatchers.Main) {
+            characterData = fetchCharacterData().await()
+            if (characterData.str.toInt() < 10) {
+                fetchCharacterFromWWW()
+            } else {
+                displayCharacterData()
+            }
         }
     }
 }
